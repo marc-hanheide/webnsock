@@ -2,6 +2,7 @@ from distutils.core import setup
 setup(
     name='webnsock',
     packages=['webnsock'],
+    package_data={'webnsock': ['www', 'www/*', 'www/*/*', 'www/*/*/*', 'www/*/*/*/*']},
     version='0.2',
     description='A web.py and websocket framework for interactive webservices',
     author='Marc Hanheide',
