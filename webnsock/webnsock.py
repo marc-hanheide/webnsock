@@ -3,12 +3,15 @@ import web  # http.server
 from os import chdir, path
 import signal
 import time
+import posixpath
+import os
+import urllib
 from json import loads, dumps
 from logging import error, warn, info, debug, basicConfig, INFO
 from pprint import pformat
 from threading import Thread, Condition
 from uuid import uuid4
-
+from web.httpserver import StaticMiddleware, StaticApp
 
 from autobahn.asyncio.websocket import WebSocketServerProtocol, \
     WebSocketServerFactory
@@ -33,9 +36,6 @@ basicConfig(level=INFO)
 #     'websocket_suffix': ':9090',
 # }
 
-#render = web.template.render(TEMPLATE_DIR, base='base', globals=globals())
-
-#chdir(TEMPLATE_DIR)
 
 
 class JsonWSProtocol(WebSocketServerProtocol):
@@ -150,20 +150,117 @@ class WSBackend(object):
         self.loop.close()
 
 
+class FlexStaticApp(StaticApp):
+
+    def __init__(self, environ, start_response, root=None):
+        if root is None:
+            self._root = os.getcwd()
+        else:
+            self._root = root
+
+        print "INIT: ", self._root, type(FlexStaticApp)
+        super(FlexStaticApp, self).__init__(
+            environ, start_response)
+        print "INIT done: ", self._root
+
+    def translate_path(self, path):
+        """Translate a /-separated PATH to the local filename syntax.
+
+        Components that mean special things to the local file system
+        (e.g. drive or directory names) are ignored.  (XXX They should
+        probably be diagnosed.)
+
+        """
+        print 'TRANSLATE PATH: ', path
+        # abandon query parameters
+        path = path.split('?', 1)[0]
+        path = path.split('#', 1)[0]
+        # Don't forget explicit trailing slash when normalizing. Issue17324
+        trailing_slash = path.rstrip().endswith('/')
+        path = posixpath.normpath(urllib.unquote(path))
+        words = path.split('/')
+        words = filter(None, words)
+        # This the new way to NOT only work in CWD
+        path = self._root
+        print 'PATH: ', path
+        for word in words:
+            if os.path.dirname(word) or word in (os.curdir, os.pardir):
+                # Ignore components that are not a simple file/directory name
+                continue
+            path = os.path.join(path, word)
+        if trailing_slash:
+            path += '/'
+        return path
+
+
+class FlexStaticMiddleWare(StaticMiddleware):
+
+    def __init__(self, app, prefix='/static/', root=None):
+        self._root = root
+        StaticMiddleware.__init__(
+            self,
+            app, prefix
+        )
+        # super(FlexStaticMiddleWare, self).__init__(
+        #     app, prefix)
+
+    def __call__(self, environ, start_response):
+        path = environ.get('PATH_INFO', '')
+        print '**** ', path, ' =? ', self.prefix
+        path = self.normpath(path)
+
+        if path.startswith(self.prefix):
+            print "^^^ use FlexStaticApp" 
+            return FlexStaticApp(environ, start_response, root=self._root)
+        else:
+            return self.app(environ, start_response)
+
+
 class ControlServer(web.auto_application):
     def __init__(self):
 
+        self._template_dir = path.realpath(
+            path.join(
+                path.dirname(__file__),
+                'www'
+            )
+        )
+
+        self._static_dirs = [path.realpath(
+            path.join(
+                path.dirname(__file__),
+                'www/webnsock'
+            )
+        )]
+
         web.auto_application.__init__(self)
 
-        # class Index(self.page):
-        #     path = '/'
+        self.render = web.template.render(
+            self._template_dir,
+            base='base', globals=globals()
+        )
 
-        #     def GET(self):
-        #         return render.index()
+        self_app = self
+
+        class Index(self.page):
+            path = '/'
+
+            def GET(self):
+                return self_app.render.index({})
+
+
+
 
     def run(self, port=8027, *middleware):
         info('webserver running.')
         func = self.wsgifunc(*middleware)
+        for s in self._static_dirs:
+            print 'add %s as static path' % s
+            func = FlexStaticMiddleWare(
+                func, prefix='/' + os.path.basename(s),
+                root=s
+            )
+
         return web.httpserver.runsimple(func, ('0.0.0.0', port))
 
 
@@ -192,13 +289,16 @@ def signal_handler(webserver, backend, signum, frame):
     info('backend shutdown')
 
 
-if __name__ == "__main__":
-
+def main():
     webserver = Webserver(ControlServer())
     backend = WSBackend(EchoJSONProtocol)
     signal.signal(signal.SIGINT,
                   lambda s, f: signal_handler(webserver, backend, s, f))
     webserver.start()
     backend.talker()
+
+
+if __name__ == "__main__":
+    main()
 
 

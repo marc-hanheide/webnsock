@@ -1,11 +1,18 @@
 from setuptools import setup, find_packages
 
-VERSION='0.0.3'
+VERSION = '0.0.3'
 
 setup(
     name='webnsock',
     packages=find_packages(),
     version=VERSION,
+    entry_points={
+        'console_scripts':
+            [
+                'webnsock=webnsock:main',
+            ]
+    },
+
     install_requires=['web.py', 'trollius', 'autobahn'],
     description='A web.py and websocket framework for interactive webservices',
     author='Marc Hanheide',
