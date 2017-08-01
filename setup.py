@@ -1,15 +1,20 @@
-from distutils.core import setup
+from setuptools import setup, find_packages
+
+VERSION='0.0.3'
 
 setup(
     name='webnsock',
-    packages=['webnsock'],
-    version='0.0.2',
+    packages=find_packages(),
+    version=VERSION,
+    install_requires=['web.py', 'trollius', 'autobahn'],
     description='A web.py and websocket framework for interactive webservices',
     author='Marc Hanheide',
     author_email='marc@hanheide.net',
-    url='https://github.com/marc-hanheide/webnsock',  # use the URL to the github repo
-    download_url='https://github.com/marc-hanheide/webnsock/archive/0.0.2.tar.gz',  # I'll explain this in a second
+    url='https://github.com/marc-hanheide/webnsock',
+    download_url='https://github.com/marc-hanheide/webnsock/archive/%s.tar.gz'
+        % VERSION,  # I'll explain this in a second
     keywords=['web.py', 'websockets', 'webserver'],  # arbitrary keywords
     classifiers=[],
     include_package_data=True,
+    zip_safe=False
 )
