@@ -37,56 +37,10 @@ function _update_html(payload) {
   $('#'+payload['id']).html(payload['html'])
 }
 
-function _send_btn_text(text) {
-  console.log('_send_btn_text: ' + text);
-  msg = {
-    'method': "dialog_button",
-    'text': text
-  };
-  send(msg);
-}
-
-function _show_buttons(json) {
-  console.log(json);
-  //var data = JSON.parse(json);
-  var btns = json["buttons"]; 
-  var html = '<div class="btn-group" role="group">';
-  for (d in btns) {
-    console.log('add button ' + btns[d])
-    html +=  '<button type="button" class="btn-lg btn-primary"' + 
-                ' onclick="_send_btn_text(\''+ btns[d] +'\')">' +
-                btns[d] +
-                '</button>';
-  }
-  html += "</div>";
-  console.log(html);
-  $('#dialog-buttons').html(html);
-
-}
-
-function _show_continue_button(json) {
-  console.log('show continue button');
-  //var data = JSON.parse(json);
-  var opt = json["options"]; 
-  console.log(opt);
-
-  if (opt.length > 0 && opt[0] == 'show') {
-      $('#continue_panel').show();
-  } else {
-      $('#continue_panel').hide();
-  }
-}
 
 
 
-function _modal_dlg(payload) {
-  $('#'+payload['id']).modal();
-  return {'dlg_result': true};
-}
-
-
-
-function init() {
+function webnsock_init() {
   var host_name = window.location.hostname;
   socket = new ReconnectingWebSocket("ws://" + host_name + ":8128");
   socket.binaryType = "arraybuffer";

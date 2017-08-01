@@ -11,7 +11,7 @@ from logging import error, warn, info, debug, basicConfig, INFO
 from pprint import pformat
 from threading import Thread, Condition
 from uuid import uuid4
-from web.httpserver import StaticMiddleware, StaticApp
+from web.httpserver import StaticMiddleware, LogMiddleware, StaticApp
 
 from autobahn.asyncio.websocket import WebSocketServerProtocol, \
     WebSocketServerFactory
@@ -158,20 +158,21 @@ class FlexStaticApp(StaticApp):
         else:
             self._root = root
 
-        print "INIT: ", self._root, type(FlexStaticApp)
-        super(FlexStaticApp, self).__init__(
-            environ, start_response)
-        print "INIT done: ", self._root
+        try:
+            StaticApp.__init__(
+                self,
+                environ, start_response
+            )
+        except Exception as e:
+            print "INIT failed: ", self._root, e
 
     def translate_path(self, path):
         """Translate a /-separated PATH to the local filename syntax.
-
         Components that mean special things to the local file system
         (e.g. drive or directory names) are ignored.  (XXX They should
         probably be diagnosed.)
 
         """
-        print 'TRANSLATE PATH: ', path
         # abandon query parameters
         path = path.split('?', 1)[0]
         path = path.split('#', 1)[0]
@@ -182,7 +183,6 @@ class FlexStaticApp(StaticApp):
         words = filter(None, words)
         # This the new way to NOT only work in CWD
         path = self._root
-        print 'PATH: ', path
         for word in words:
             if os.path.dirname(word) or word in (os.curdir, os.pardir):
                 # Ignore components that are not a simple file/directory name
@@ -206,62 +206,88 @@ class FlexStaticMiddleWare(StaticMiddleware):
 
     def __call__(self, environ, start_response):
         path = environ.get('PATH_INFO', '')
-        print '**** ', path, ' =? ', self.prefix
         path = self.normpath(path)
 
         if path.startswith(self.prefix):
-            print "^^^ use FlexStaticApp" 
             return FlexStaticApp(environ, start_response, root=self._root)
         else:
             return self.app(environ, start_response)
 
 
-class ControlServer(web.auto_application):
-    def __init__(self):
+class WebServer(web.auto_application):
 
-        self._template_dir = path.realpath(
-            path.join(
-                path.dirname(__file__),
-                'www'
-            )
-        )
+    def __init__(self, add_static=None, static_prefix='/'):
 
-        self._static_dirs = [path.realpath(
+        self._template_dir = None
+        self._static_prefix = static_prefix
+        self._renderer = web.template.render(
+            path.realpath(
+                path.join(
+                    path.dirname(__file__),
+                    'www/webnsock'
+                )
+            ),
+            base='base', globals=globals())
+        self._static_dirs = set([])
+
+        self.add_static_dir(
             path.join(
                 path.dirname(__file__),
                 'www/webnsock'
             )
-        )]
+        )
+
+        if add_static is not None:
+            self.add_static_dir(
+                path.join(
+                    add_static
+                )
+            )
 
         web.auto_application.__init__(self)
 
-        self.render = web.template.render(
-            self._template_dir,
-            base='base', globals=globals()
+        # self_app = self
+
+        # class Index(self.page):
+        #     path = '/'
+
+        #     def GET(self):
+        #         return self_app.render.index({})
+
+    def add_static_dir(self, dir_name):
+        self._static_dirs.add(
+            path.realpath(dir_name)
         )
 
-        self_app = self
-
-        class Index(self.page):
-            path = '/'
-
-            def GET(self):
-                return self_app.render.index({})
-
-
-
-
     def run(self, port=8027, *middleware):
-        info('webserver running.')
+        global server
+        info('NEW webserver running.')
         func = self.wsgifunc(*middleware)
         for s in self._static_dirs:
             print 'add %s as static path' % s
             func = FlexStaticMiddleWare(
-                func, prefix='/' + os.path.basename(s),
-                root=s
+                func, prefix=self._static_prefix + os.path.basename(s),
+                root=os.path.dirname(s)
             )
-
         return web.httpserver.runsimple(func, ('0.0.0.0', port))
+
+        # func = StaticMiddleware(func)
+        # func = LogMiddleware(func)
+        # server_address = ('0.0.0.0', port)
+
+        # server = WSGIServer(server_address, func)
+
+        # if server.ssl_adapter:
+        #     print "https://%s:%d/" % server_address
+        # else:
+        #     print "http://%s:%d/" % server_address
+
+        # try:
+        #     server.start()
+        # except (KeyboardInterrupt, SystemExit):
+        #     server.stop()
+        #     server = None
+        # return False
 
 
 class Webserver(Thread):
@@ -290,7 +316,7 @@ def signal_handler(webserver, backend, signum, frame):
 
 
 def main():
-    webserver = Webserver(ControlServer())
+    webserver = Webserver(WebServer())
     backend = WSBackend(EchoJSONProtocol)
     signal.signal(signal.SIGINT,
                   lambda s, f: signal_handler(webserver, backend, s, f))

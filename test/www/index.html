@@ -1,0 +1,89 @@
+$var title: SPQReL
+$var jsfiles: 
+
+<!DOCTYPE html>
+<html>
+    
+    <head>
+        <title>Test</title>
+        <meta charset="utf-8">
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <meta http-equiv="Pragma" content="no-cache" />
+        <meta http-equiv="Expires" content="0" />
+        <meta name="viewport" content="width=1280, initial-scale=.7">
+        <script type="text/javascript" src="webnsock/js/jquery.min.js"></script>
+        <script type="text/javascript" src="webnsock/js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="webnsock/js/webnsock.js"></script>
+        <script type="text/javascript" src="webnsock/js/reconnecting-websocket.min.js"></script>
+        <link rel="stylesheet" href="webnsock/css/bootstrap.min.css">
+
+    </head>
+    <body>
+        <script>
+            document.onready = function() {
+                webnsock_init();
+            }
+
+            function _send_btn_text(text) {
+              console.log('_send_btn_text: ' + text);
+              msg = {
+                'method': "button_text",
+                'text': text
+              };
+              send(msg);
+            }
+
+            function _show_buttons(json) {
+              console.log(json);
+              //var data = JSON.parse(json);
+              var btns = json["buttons"]; 
+              var html = '<div class="btn-group" role="group">';
+              for (d in btns) {
+                console.log('add button ' + btns[d])
+                html +=  '<button type="button" class="btn-lg btn-primary"' + 
+                            ' onclick="_send_btn_text(\''+ btns[d] +'\')">' +
+                            btns[d] +
+                            '</button>';
+              }
+              html += "</div>";
+              console.log(html);
+              $$('#dialog-buttons').html(html);
+
+            }
+
+            function _show_continue_button(json) {
+              console.log('show continue button');
+              //var data = JSON.parse(json);
+              var opt = json["options"]; 
+              console.log(opt);
+
+              if (opt.length > 0 && opt[0] == 'show') {
+                  $$('#continue_panel').show();
+              } else {
+                  $$('#continue_panel').hide();
+              }
+            }
+
+
+
+            function _modal_dlg(payload) {
+              $$('#'+payload['id']).modal();
+              return {'dlg_result': true};
+            }
+
+
+
+        </script>
+
+        <div class="section">
+            <div class="container">
+                <div class="jumbotron">
+                    <h1>Lorem ipsum</h1> 
+                    <p>
+                        and more non-sense...
+                    </p>
+                 </div>
+            </div>
+        </div>
+    </body>
+</html>
