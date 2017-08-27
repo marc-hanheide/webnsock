@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 import web  # http.server
-from os import chdir, path
+from os import path
 import signal
 import time
 import posixpath
 import os
 import urllib
 from json import loads, dumps
-from logging import error, warn, info, debug, basicConfig, INFO
+from logging import warn, info, debug, basicConfig, INFO
 from pprint import pformat
-from threading import Thread, Condition
+from threading import Thread
 from uuid import uuid4
-from web.httpserver import StaticMiddleware, LogMiddleware, StaticApp
+from web.httpserver import StaticMiddleware, StaticApp
 
 from autobahn.asyncio.websocket import WebSocketServerProtocol, \
     WebSocketServerFactory
@@ -35,7 +35,6 @@ basicConfig(level=INFO)
 # html_config = {
 #     'websocket_suffix': ':9090',
 # }
-
 
 
 class JsonWSProtocol(WebSocketServerProtocol):
@@ -110,7 +109,6 @@ class EchoJSONProtocol(JsonWSProtocol):
         return payload
 
 
-
 class WSBackend(object):
 
     def __init__(self, protocol=EchoJSONProtocol):
@@ -140,7 +138,7 @@ class WSBackend(object):
         server = self.loop.run_until_complete(coro)
         asyncio.async(self.wait_until_shutdown(self.loop))
 
-        #signal.signal(signal.SIGINT, self.signal_handler)
+        # signal.signal(signal.SIGINT, self.signal_handler)
         self.loop.run_forever()
 
         info("Closing...")
@@ -290,18 +288,18 @@ class WebServer(web.auto_application):
         # return False
 
 
-class Webserver(Thread):
+class WebserverThread(Thread):
 
     def __init__(self, app, port=8127):
         self.app = app
         self.port = port
 
-        super(Webserver, self).__init__()
+        super(WebserverThread, self).__init__()
 
     def run(self):
-        info("Webserver started.")
+        info("WebserverThread started.")
         self.app.run(port=self.port)
-        info("Webserver stopped.")
+        info("WebserverThread stopped.")
 
     def stop(self):
         self.app.stop()
@@ -316,7 +314,7 @@ def signal_handler(webserver, backend, signum, frame):
 
 
 def main():
-    webserver = Webserver(WebServer())
+    webserver = WebserverThread(WebServer())
     backend = WSBackend(EchoJSONProtocol)
     signal.signal(signal.SIGINT,
                   lambda s, f: signal_handler(webserver, backend, s, f))
@@ -326,5 +324,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
