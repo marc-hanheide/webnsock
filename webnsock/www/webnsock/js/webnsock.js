@@ -40,9 +40,12 @@ function _update_html(payload) {
 
 
 
-function webnsock_init() {
-  var host_name = window.location.hostname;
-  socket = new ReconnectingWebSocket("ws://" + host_name + ":8128");
+function webnsock_init(uri="") {
+  if (uri == "") {
+    var host_name = window.location.hostname;
+    uri = "ws://" + host_name + ":8128";
+  }
+  socket = new ReconnectingWebSocket(uri);
   socket.binaryType = "arraybuffer";
 
   socket.onopen = function () {
