@@ -94,7 +94,6 @@ class JsonWSProtocol(WebSocketServerProtocol):
         else:
             warn("don't know what to do with message %s" % pformat(payload))
 
-
     #@abstractmethod
     def onJSON(self, payload):
         warn('should not work')
@@ -150,7 +149,8 @@ class WSBackend(object):
 
 class FlexStaticApp(StaticApp):
 
-    def __init__(self, environ, start_response, root=None):
+    def __init__(self, environ, start_response, url_prefix='/', root=None):
+        self._url_prefix = url_prefix
         if root is None:
             self._root = os.getcwd()
         else:
@@ -177,6 +177,10 @@ class FlexStaticApp(StaticApp):
         # Don't forget explicit trailing slash when normalizing. Issue17324
         trailing_slash = path.rstrip().endswith('/')
         path = posixpath.normpath(urllib.unquote(path))
+        # remove url_prefix
+        #print "PATH 1: ", path, self._url_prefix
+        path = path.replace(self._url_prefix, '/', 1)
+        #print "PATH 2: ", path
         words = path.split('/')
         words = filter(None, words)
         # This the new way to NOT only work in CWD
@@ -188,16 +192,20 @@ class FlexStaticApp(StaticApp):
             path = os.path.join(path, word)
         if trailing_slash:
             path += '/'
+        #print "PATH: ", path
+        #print "URL_PREFIX", self._url_prefix
+        #print "PREFIX", self.prefix
         return path
 
 
 class FlexStaticMiddleWare(StaticMiddleware):
 
-    def __init__(self, app, prefix='/static/', root=None):
+    def __init__(self, app, prefix='static/', url_prefix='/', root=None):
         self._root = root
+        self._url_prefix = url_prefix
         StaticMiddleware.__init__(
             self,
-            app, prefix
+            app, url_prefix + prefix
         )
         # super(FlexStaticMiddleWare, self).__init__(
         #     app, prefix)
@@ -206,8 +214,11 @@ class FlexStaticMiddleWare(StaticMiddleware):
         path = environ.get('PATH_INFO', '')
         path = self.normpath(path)
 
+        print "CALL: ", path, self.prefix
         if path.startswith(self.prefix):
-            return FlexStaticApp(environ, start_response, root=self._root)
+            return FlexStaticApp(
+                environ, start_response,
+                url_prefix=self._url_prefix, root=self._root)
         else:
             return self.app(environ, start_response)
 
@@ -231,7 +242,7 @@ class WebServer(web.auto_application):
         self.add_static_dir(
             path.join(
                 path.dirname(__file__),
-                'www/webnsock'
+                'www/webnsock/'
             )
         )
 
@@ -264,7 +275,8 @@ class WebServer(web.auto_application):
         for s in self._static_dirs:
             print 'add %s as static path' % s
             func = FlexStaticMiddleWare(
-                func, prefix=self._static_prefix + os.path.basename(s),
+                func, prefix=os.path.basename(s),
+                url_prefix=self._static_prefix,
                 root=os.path.dirname(s)
             )
         return web.httpserver.runsimple(func, ('0.0.0.0', port))

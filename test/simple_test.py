@@ -12,10 +12,12 @@ class SimpleUIServer(webnsock.WebServer):
 
         webnsock.WebServer.__init__(
             self,
-            path.join(
-                path.dirname(__file__),
-                'www/test'
-            )
+            None,
+            # path.join(
+            #     path.dirname(__file__),
+            #     'www/test'
+            # ),
+            '/test/'
         )
 
         self._renderer = web.template.render(
@@ -30,7 +32,7 @@ class SimpleUIServer(webnsock.WebServer):
         self_app = self
 
         class Index(self.page):
-            path = '/'
+            path = '/test/'
 
             def GET(self):
                 return self_app._renderer.index()
@@ -49,7 +51,7 @@ class SimpleProtocol(webnsock.JsonWSProtocol):
 
 
 def main():
-    webserver = webnsock.Webserver(SimpleUIServer())
+    webserver = webnsock.WebserverThread(SimpleUIServer())
     backend = webnsock.WSBackend(SimpleProtocol)
     signal(SIGINT,
            lambda s, f: webnsock.signal_handler(webserver, backend, s, f))
