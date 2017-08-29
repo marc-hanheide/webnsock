@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from setuptools import setup, find_packages
 
-VERSION = '0.0.4'
+VERSION = '0.0.6'
 
 setup(
     name='webnsock',
