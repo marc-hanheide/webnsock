@@ -214,7 +214,6 @@ class FlexStaticMiddleWare(StaticMiddleware):
         path = environ.get('PATH_INFO', '')
         path = self.normpath(path)
 
-        print "CALL: ", path, self.prefix
         if path.startswith(self.prefix):
             return FlexStaticApp(
                 environ, start_response,

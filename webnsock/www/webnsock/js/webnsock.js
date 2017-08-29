@@ -48,10 +48,6 @@ function webnsock_init(uri="") {
   socket = new ReconnectingWebSocket(uri);
   socket.binaryType = "arraybuffer";
 
-  socket.onopen = function () {
-    console.log("Connected!");
-  };
-
   socket.onmessage = function (e) {
     if (typeof e.data == "string") {
       var payload = JSON.parse(e.data);
