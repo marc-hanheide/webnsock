@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+
+from __future__ import print_function
+
 import web  # http.server
 from os import path
 import signal
@@ -6,8 +9,12 @@ import time
 import posixpath
 import os
 import urllib
+try:
+    from urllib.parse import unquote
+except ImportError:
+    from urllib import unquote
 from json import loads, dumps
-from logging import warn, info, debug, basicConfig, INFO
+from logging import warning, info, debug, basicConfig, INFO
 from pprint import pformat
 from threading import Thread
 from uuid import uuid4
@@ -57,7 +64,7 @@ class JsonWSProtocol(WebSocketServerProtocol):
     def onMessage(self, payload, isBinary):
         # Debug
         if isBinary:
-            warn("Binary message received: {0} bytes".format(len(payload)))
+            warning("Binary message received: {0} bytes".format(len(payload)))
         else:
             debug("Text message received: {0}".format(payload.decode('utf8')))
             message_text = payload.decode('utf8')
@@ -71,7 +78,7 @@ class JsonWSProtocol(WebSocketServerProtocol):
                     r['_query'] = payload
                     self.sendJSON(r)
                 except Exception as e:
-                    warn('Exception: %s', str(e))
+                    warning('Exception: %s', str(e))
 
     def _dispatch(self, payload):
         if 'method' in payload:
@@ -80,7 +87,7 @@ class JsonWSProtocol(WebSocketServerProtocol):
                 method_to_call = getattr(self, 'on_%s' % method)
                 info('dispatch to method on_%s' % method)
             except AttributeError:
-                warn('cannot dispatch method %s' % method)
+                warning('cannot dispatch method %s' % method)
                 return
             return method_to_call(payload)
         elif '_response_to' in payload:
@@ -92,11 +99,11 @@ class JsonWSProtocol(WebSocketServerProtocol):
             info('got a response to %s for method %s' %
                  (payload['_response_to'], payload['_query']['method']))
         else:
-            warn("don't know what to do with message %s" % pformat(payload))
+            warning("don't know what to do with message %s" % pformat(payload))
 
     #@abstractmethod
     def onJSON(self, payload):
-        warn('should not work')
+        warning('should not work')
 
     def onClose(self, wasClean, code, reason):
         info("WebSocket connection closed: {0}".format(reason))
@@ -135,7 +142,7 @@ class WSBackend(object):
         self.loop = asyncio.get_event_loop()
         coro = self.loop.create_server(factory, '0.0.0.0', port)
         server = self.loop.run_until_complete(coro)
-        asyncio.async(self.wait_until_shutdown(self.loop))
+        asyncio.ensure_future(self.wait_until_shutdown(self.loop))
 
         # signal.signal(signal.SIGINT, self.signal_handler)
         self.loop.run_forever()
@@ -162,7 +169,7 @@ class FlexStaticApp(StaticApp):
                 environ, start_response
             )
         except Exception as e:
-            print "INIT failed: ", self._root, e
+            print("INIT failed: ", self._root, e)
 
     def translate_path(self, path):
         """Translate a /-separated PATH to the local filename syntax.
@@ -176,7 +183,7 @@ class FlexStaticApp(StaticApp):
         path = path.split('#', 1)[0]
         # Don't forget explicit trailing slash when normalizing. Issue17324
         trailing_slash = path.rstrip().endswith('/')
-        path = posixpath.normpath(urllib.unquote(path))
+        path = posixpath.normpath(unquote(path))
         # remove url_prefix
         #print "PATH 1: ", path, self._url_prefix
         path = path.replace(self._url_prefix, '/', 1)
@@ -272,7 +279,7 @@ class WebServer(web.auto_application):
         info('NEW webserver running.')
         func = self.wsgifunc(*middleware)
         for s in self._static_dirs:
-            print 'add %s as static path' % s
+            print('add %s as static path' % s)
             func = FlexStaticMiddleWare(
                 func, prefix=os.path.basename(s),
                 url_prefix=self._static_prefix,
