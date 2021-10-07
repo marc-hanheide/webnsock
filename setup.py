@@ -14,7 +14,7 @@ setup(
             ]
     },
 
-    install_requires=['web.py', 'trollius;python_version<"3.6"', 'autobahn'],
+    install_requires=['web.py==0.51;python_version<"3.5"', 'web.py;python_version>="3.5"', 'trollius;python_version<"3.6"', 'autobahn'],
     description='A web.py and websocket framework for interactive webservices',
     author='Marc Hanheide',
     author_email='marc@hanheide.net',
